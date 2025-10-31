@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Toolkit - Voice Deception Analyst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5', // Indigo-600
+                        'secondary': '#6366f1', // Indigo-500
+                        'background-dark': '#1e293b', // Dark Slate
+                        'text-light': '#f8fafc', // Slate-50
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+        body { 
+            background-color: #f1f5f9; /* Light background for the overall site */
+        }
+        .card { 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .score-text {
+             background: linear-gradient(90deg, var(--score-color-start, #10b981), var(--score-color-end, #f59e0b));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .nav-link {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .nav-link.active {
+            background-color: #6366f1; /* Secondary color for active link */
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <nav class="bg-primary shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Title -->
+                <div class="flex-shrink-0 text-white text-2xl font-bold">
+                    AI Toolkit
+                </div>
+                <!-- Navigation Links -->
+                <div class="flex space-x-4">
+                    <a id="nav-home" class="nav-link text-text-light active" onclick="renderView('home')">Home</a>
+                    <a id="nav-deception" class="nav-link text-text-light" onclick="renderView('deception')">Deception Analyst</a>
+                    <a id="nav-about" class="nav-link text-text-light" onclick="renderView('about')">About</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div id="main-content" class="p-4 md:p-8">
+        
+        <!-- 1. Home View -->
+        <div id="view-home" class="max-w-3xl mx-auto p-10 bg-white rounded-xl card hidden">
+            <h2 class="text-4xl font-extrabold text-primary mb-4">Welcome to the AI Toolkit</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                This single-file web application demonstrates the power of the Gemini API for advanced analysis and human-AI interaction. 
+            </p>
+            <div class="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+                <h3 class="text-2xl font-bold text-primary mb-3">Featured Tool: Deception Analyst</h3>
+                <p class="text-gray-600 mb-4">
+                    The **Deception Analyst** uses the multimodal capabilities of the Gemini model to analyze your recorded voice, combining linguistic content (what you say) with simulated acoustic stress indicators (how you say it) to generate a **Deception Likelihood Score**.
+                </p>
+                <button onclick="renderView('deception')" class="py-2 px-4 bg-primary text-white font-semibold rounded-lg hover:bg-secondary transition duration-200">
+                    Launch Deception Analyst
+                </button>
+            </div>
+            
+            <div class="mt-8 text-sm text-gray-500">
+                <p>This entire multi-page experience is rendered from a single, responsive HTML file.</p>
+            </div>
+        </div>
+
+        <!-- 2. Deception Analyst View (The Core App) -->
+        <div id="view-deception" class="w-full max-w-xl mx-auto bg-white p-8 rounded-2xl card transition-all duration-500">
+            <h1 id="app-title" class="text-3xl font-extrabold text-center text-gray-900 mb-2">Deception Analyst AI</h1>
+            <p id="app-subtitle" class="text-center text-gray-500 mb-6 text-sm">Voice Stress & Linguistic Analysis</p>
+
+            <!-- Language Selection -->
+            <div class="mb-6 flex justify-between items-center bg-gray-50 p-3 rounded-xl">
+                <label id="lang-label" for="language-select" class="text-sm font-medium text-gray-700">Select Answer Language:</label>
+                <select id="language-select" class="p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary disabled:opacity-50">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <!-- Status & Phase Tracker -->
+            <div id="status-bar" class="text-center mb-6 p-3 rounded-xl font-semibold text-white transition-all duration-300 bg-gray-500">
+                <span id="current-phase-text" class="text-base">Initializing...</span>
+            </div>
+
+            <!-- Question Area -->
+            <div class="mb-8 p-4 bg-indigo-50 rounded-xl border border-indigo-200 min-h-[5rem] flex items-center justify-center">
+                <p id="question-text" class="text-lg text-center font-medium text-gray-700">Loading Questions...</p>
+            </div>
+            
+            <!-- Voice Visualizer Canvas -->
+            <div id="visualizer-container" class="flex justify-center items-center h-48 mb-8 relative">
+                <canvas id="voice-visualizer" width="300" height="200" class="hidden"></canvas>
+                <!-- Static Icon when not recording -->
+                <svg id="static-mic-icon" class="h-24 w-24 text-indigo-400 p-4 border-4 border-indigo-200 rounded-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7v0a7 7 0 01-7-7v-3a1 1 0 012 0v3a5 5 0 0010 0v-3a1 1 0 012 0v3z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4a1 1 0 011 1v5a1 1 0 01-2 0V5a1 1 0 011-1z"/>
+                </svg>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-col items-center space-y-4">
+                <button id="record-button" class="w-full py-3 px-6 rounded-full text-white font-bold text-lg transition-all duration-300 bg-primary hover:bg-secondary focus:outline-none focus:ring-4 focus:ring-primary/50 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Start Test
+                </button>
+                <div id="mic-status" class="text-sm text-red-700 font-semibold hidden bg-red-100 p-2 rounded-lg"></div>
+            </div>
+
+            <!-- Result Display Area -->
+            <div id="result-area" class="mt-10 pt-6 border-t border-gray-200 hidden">
+                <div class="p-4 rounded-xl shadow-inner bg-yellow-50 mb-6">
+                    <p id="disclaimer-text" class="text-xs text-yellow-800 font-semibold text-center">
+                        ⚠️ Disclaimer: This score analyzes vocal stress and linguistic patterns for entertainment and experimental use only.
+                    </p>
+                </div>
+
+                <div class="text-center mb-8">
+                    <p id="likelihood-text" class="text-xl font-medium text-gray-700">Deception Likelihood:</p>
+                    <p id="confidence-score" class="text-8xl font-extrabold mt-2 transition-all duration-700 score-text" style="--score-color-start: #10b981; --score-color-end: #f59e0b;">--%</p>
+                </div>
+
+                <!-- Comprehensive Report Details -->
+                <h3 class="text-lg font-bold text-gray-800 mb-3 border-b-2 border-indigo-100 pb-2">Full Analysis Report</h3>
+                <p id="summary-text" class="text-gray-600 italic text-sm mb-6"></p>
+
+                <!-- Transcription -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <p class="text-sm font-semibold text-gray-800 mb-1">Transcription of Final Answer:</p>
+                    <p id="transcription-text" class="text-sm text-gray-600 italic"></p>
+                </div>
+
+                <!-- Acoustic Statistics -->
+                <h4 class="text-md font-bold text-gray-800 mb-2">Acoustic & Timing Analysis</h4>
+                <div id="acoustic-stats" class="grid grid-cols-2 gap-3 mb-6">
+                    <!-- Stats inserted here -->
+                </div>
+
+                <!-- Linguistic Statistics -->
+                <h4 class="text-md font-bold text-gray-800 mb-2">Linguistic Indicators</h4>
+                <div id="linguistic-stats" class="grid grid-cols-2 gap-3 mb-6">
+                    <!-- Stats inserted here -->
+                </div>
+
+                <!-- XAI Breakdown -->
+                <h4 id="xai-title" class="text-md font-bold text-gray-800 mb-3 border-t border-indigo-100 pt-3">Explainable AI (XAI) Breakdown</h4>
+                <ul id="xai-list" class="space-y-3 mb-8">
+                    <!-- XAI metrics will be inserted here -->
+                </ul>
+
+                <!-- Restart Button (New placement and prominence) -->
+                <div class="mt-8">
+                    <button id="restart-button" class="w-full py-3 px-6 rounded-full text-white font-bold text-lg transition-all duration-300 bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-500/50">
+                        Start New Test Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. About View -->
+        <div id="view-about" class="max-w-3xl mx-auto p-10 bg-white rounded-xl card hidden">
+            <h2 class="text-4xl font-extrabold text-primary mb-4">About the AI Toolkit</h2>
+            <p class="text-lg text-gray-700 mb-6">
+                This demonstration application was built to showcase the powerful **multimodal** capabilities of the **Gemini API**. It highlights how a single model can handle multiple data types—in this case, both **audio (for transcription and analysis)** and **text (for complex reasoning and structured output)**—to produce a sophisticated, data-driven result.
+            </p>
+            <h3 class="text-2xl font-bold text-gray-800 mb-3">Key Technologies Used:</h3>
+            <ul class="list-disc list-inside space-y-2 text-gray-600">
+                <li>**Gemini 2.5 Flash:** Used for audio transcription, complex prompt reasoning, and generating structured JSON output.</li>
+                <li>**Web Audio API & MediaRecorder:** Used in the browser to capture and process the user's voice.</li>
+                <li>**Tailwind CSS:** Used for fast, responsive, and aesthetically pleasing UI design.</li>
+                <li>**Client-Side Routing:** JavaScript is used to manage the single page application (SPA) experience.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loading-modal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl text-center">
+            <svg class="animate-spin h-10 w-10 text-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="modal-title" class="text-xl font-bold text-gray-800">Analyzing Speech & Stress Cues...</p>
+            <p id="modal-subtitle" class="text-sm text-gray-500 mt-1">Please wait a few seconds for the AI result.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Configuration, State, and L10N (from previous version) ---
+        const apiKey = "AIzaSyDO9Ke5ulUkVCB1JiSS70k0hN8ShnKYYTM"; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        
+        const NUM_CALIBRATION_QUESTIONS = 3;
+        const NUM_CHALLENGE_QUESTIONS = 1;
+        
+        const LANGUAGES = [
+            { name: 'English', code: 'en' },
+            { name: 'Spanish', code: 'es' },
+            { name: 'Arabic', code: 'ar' },
+            { name: 'Hebrew', code: 'he' },
+            { name: 'Russian', code: 'ru' }
+        ];
+
+        // --- Localization (L10N) Object ---
+        const L10N = {
+            'en': {
+                TITLE: "Deception Analyst AI",
+                SUBTITLE: "Voice Stress & Linguistic Analysis",
+                LANG_LABEL: "Select Answer Language:",
+                PHASE_SETUP: "Setup: Ready to Start Test",
+                PHASE_CALIBRATION: (step, total) => `Calibration Phase: ${step} of ${total}`,
+                PHASE_CHALLENGE: (step, total) => `Challenge Question: ${step} of ${total}`,
+                PHASE_ANALYZING_TEXT: "Analyzing Speech & Stress Cues...",
+                PHASE_COMPLETE: "Analysis Complete!",
+                Q_SETUP: "Select your answer language above and click 'Start Test' to begin calibration.",
+                BTN_START_TEST: "Start Test",
+                BTN_START_RECORDING: "Start Recording",
+                BTN_FINISH_ANSWERING: "Finish Answering",
+                MODAL_TITLE: "Analyzing Speech & Stress Cues...",
+                MODAL_SUBTITLE: "Please wait a few seconds for the AI result.",
+                RESULT_LIKELIHOOD: "Deception Likelihood:",
+                RESULT_XAI_TITLE: "Explainable AI (XAI) Breakdown",
+                RESULT_DISCLAIMER: "⚠️ Disclaimer: This score analyzes vocal stress and linguistic patterns for entertainment and experimental use only.",
+                CALIBRATION: [
+                    "Please state your full name and the current date.",
+                    "Describe the shirt or top you are currently wearing, including its color.",
+                    "List three objects you can see immediately to your right.",
+                    "What is the current time displayed on your nearest clock?",
+                    "Name three major cities in Australia.",
+                    "What is 1 plus 1?",
+                    "Describe the shoes you are wearing or the last pair you wore.",
+                    "Recite the last sentence of the Universal Declaration of Human Rights."
+                ],
+                CHALLENGE: [
+                    "Have you ever secretly taken credit for someone else's idea?",
+                    "If you found a wallet with $1,000 in it and no identification, would you try to return it?",
+                    "Tell me about the last time you told a significant, deliberate lie.",
+                    "Have you ever exaggerated your skills or accomplishments on a resume?",
+                    "Do you believe you are completely honest with your closest family members?",
+                    "If a friend asked you to cover for them on a serious commitment, would you lie?",
+                    "Is there anything major you regret keeping secret from your partner or family?",
+                    "Do you believe in the concept of a 'white lie' being acceptable?",
+                    "Have you ever intentionally cheated in a school or work situation?",
+                    "Have you ever driven over the speed limit and avoided a ticket?",
+                    "If you saw a colleague steal a small item, would you report them?",
+                    "Have you ever faked an illness to get out of an obligation?"
+                ]
+            },
+            'es': {
+                TITLE: "IA de Análisis de Engaño",
+                SUBTITLE: "Análisis de Estrés Vocal y Lingüístico",
+                LANG_LABEL: "Seleccionar Idioma de Respuesta:",
+                PHASE_SETUP: "Configuración: Listo para Iniciar Prueba",
+                PHASE_CALIBRATION: (step, total) => `Fase de Calibración: ${step} de ${total}`,
+                PHASE_CHALLENGE: (step, total) => `Pregunta de Desafío: ${step} de ${total}`,
+                PHASE_ANALYZING_TEXT: "Analizando Señales de Voz y Estrés...",
+                PHASE_COMPLETE: "Análisis Completo!",
+                Q_SETUP: "Seleccione su idioma de respuesta y haga clic en 'Iniciar Prueba' para comenzar la calibración.",
+                BTN_START_TEST: "Iniciar Prueba",
+                BTN_START_RECORDING: "Comenzar a Grabar",
+                BTN_FINISH_ANSWERING: "Terminar de Responder",
+                MODAL_TITLE: "Analizando Señales de Voz y Estrés...",
+                MODAL_SUBTITLE: "Espere unos segundos para el resultado de la IA.",
+                RESULT_LIKELIHOOD: "Probabilidad de Engaño:",
+                RESULT_XAI_TITLE: "Desglose de IA Explicable (XAI)",
+                RESULT_DISCLAIMER: "⚠️ Descargo de responsabilidad: Esta puntuación analiza el estrés vocal y los patrones lingüísticos solo con fines de entretenimiento y experimentales.",
+                CALIBRATION: [
+                    "Por favor, indique su nombre completo y la fecha actual.",
+                    "Describa la camisa o la parte superior que lleva puesta, incluyendo su color.",
+                    "Enumere tres objetos que pueda ver inmediatamente a su derecha.",
+                    "¿Qué hora muestra su reloj más cercano?",
+                    "Mencione tres ciudades principales de Australia.",
+                    "¿Cuánto es 1 más 1?",
+                    "Describa los zapatos que lleva puestos o el último par que usó.",
+                    "Recite la última frase de la Declaración Universal de Derechos Humanos."
+                ],
+                CHALLENGE: [
+                    "¿Alguna vez se ha atribuido secretamente el mérito de la idea de otra persona?",
+                    "Si encontrara una cartera con $1,000 y sin identificación, ¿intentaría devolverla?",
+                    "Hábleme de la última vez que dijo una mentira significativa y deliberada.",
+                    "¿Alguna vez ha exagerado sus habilidades o logros en un currículum?",
+                    "¿Cree que es completamente honesto con sus familiares más cercanos?",
+                    "Si un amigo le pidiera que lo encubriera en un compromiso serio, ¿mentiría?",
+                    "¿Hay algo importante que lamente haber mantenido en secreto de su pareja o familia?",
+                    "¿Cree en el concepto de que una 'mentira piadosa' es aceptable?",
+                    "¿Ha hecho trampa intencionalmente alguna vez en una situación escolar o laboral?",
+                    "¿Alguna vez ha conducido por encima del límite de velocidad y ha evitado una multa?",
+                    "Si viera a un colega robar un objeto pequeño, ¿lo denunciaría?",
+                    "¿Alguna vez ha fingido una enfermedad para evadir una obligación?"
+                ]
+            },
+            'ar': {
+                TITLE: "محلل الخداع بالذكاء الاصطناعي",
+                SUBTITLE: "تحليل الإجهاد الصوتي واللغوي",
+                LANG_LABEL: "اختر لغة الإجابة:",
+                PHASE_SETUP: "الإعداد: جاهز لبدء الاختبار",
+                PHASE_CALIBRATION: (step, total) => `مرحلة المعايرة: ${step} من ${total}`,
+                PHASE_CHALLENGE: (step, total) => `سؤال التحدي: ${step} من ${total}`,
+                PHASE_ANALYZING_TEXT: "جارٍ تحليل إشارات الكلام والإجهاد...",
+                PHASE_COMPLETE: "اكتمل التحليل!",
+                Q_SETUP: "اختر لغة الإجابة أعلاه وانقر على 'بدء الاختبار' لبدء المعايرة.",
+                BTN_START_TEST: "بدء الاختبار",
+                BTN_START_RECORDING: "بدء التسجيل",
+                BTN_FINISH_ANSWERING: "إنهاء الإجابة",
+                MODAL_TITLE: "جارٍ تحليل إشارات الكلام والإجهاد...",
+                MODAL_SUBTITLE: "يرجى الانتظار بضع ثوانٍ لنتيجة الذكاء الاصطناعي.",
+                RESULT_LIKELIHOOD: "احتمالية الخداع:",
+                RESULT_XAI_TITLE: "تحليل الذكاء الاصطناعي القابل للتفسير (XAI)",
+                RESULT_DISCLAIMER: "⚠️ إخلاء مسؤولية: تحلل هذه النتيجة الإجهاد الصوتي والأنماط اللغوية لأغراض الترفيه والتجريب فقط.",
+                CALIBRATION: [
+                    "يرجى ذكر اسمك الكامل والتاريخ الحالي.",
+                    "صف القميص أو الجزء العلوي الذي ترتديه حاليًا، بما في ذلك لونه.",
+                    "اذكر ثلاثة أشياء يمكنك رؤيتها على يمينك مباشرة.",
+                    "ما هو الوقت الحالي المعروض على أقرب ساعة لك؟",
+                    "اذكر ثلاث مدن رئيسية في أستراليا.",
+                    "كم يساوي 1 زائد 1؟",
+                    "صف الحذاء الذي ترتديه أو آخر زوج ارتديته.",
+                    "اقرأ الجملة الأخيرة من الإعلان العالمي لحقوق الإنسان."
+                ],
+                CHALLENGE: [
+                    "هل سبق لك أن نسبت لنفسك سراً فكرة شخص آخر؟",
+                    "إذا وجدت محفظة تحتوي على 1000 دولار وبدون هوية، فهل ستحاول إعادتها؟",
+                    "أخبرني عن آخر مرة كذبت فيها كذبة متعمدة وذات مغزى.",
+                    "هل سبق لك أن بالغت في مهاراتك أو إنجازاتك في سيرتك الذاتية؟",
+                    "هل تعتقد أنك صادق تمامًا مع أقرب أفراد عائلتك؟",
+                    "إذا طلب منك صديق التغطية عليه في التزام جدي، فهل ستكذب؟",
+                    "هل هناك أي شيء رئيسي تندم على إبقائه سراً عن شريك حياتك أو عائلتك؟",
+                    "هل تؤمن بمفهوم أن 'الكذبة البيضاء' مقبولة؟",
+                    "هل سبق لك أن غششت عمدًا في موقف دراسي أو عملي؟",
+                    "هل سبق لك أن قدت سيارتك متجاوزًا السرعة المحددة وتجنبت الحصول على مخالفة؟",
+                    "إذا رأيت زميلاً يسرق شيئًا صغيراً، فهل ستبلغ عنه؟",
+                    "هل سبق لك أن تظاهرت بالمرض للتهرب من التزام؟"
+                ]
+            },
+            'he': {
+                TITLE: "אינדיקטור בינה מלאכותית להונאה קולית",
+                SUBTITLE: "ניתוח לחץ קולי וניתוח לשוני",
+                LANG_LABEL: "בחר שפת תשובה:",
+                PHASE_SETUP: "הגדרה: מוכן להתחיל את המבחן",
+                PHASE_CALIBRATION: (step, total) => `שלב כיול: ${step} מתוך ${total}`,
+                PHASE_CHALLENGE: (step, total) => `שאלת אתגר: ${step} מתוך ${total}`,
+                PHASE_ANALYZING_TEXT: "מנתח רמזים קוליים ולחץ...",
+                PHASE_COMPLETE: "הניתוח הושלם!",
+                Q_SETUP: "בחר את שפת התשובה שלך למעלה ולחץ על 'התחל בדיקה' כדי להתחיל בכיול.",
+                BTN_START_TEST: "התחל בדיקה",
+                BTN_START_RECORDING: "התחל הקלטה",
+                BTN_FINISH_ANSWERING: "סיים תשובה",
+                MODAL_TITLE: "מנתח רמזים קוליים ולחץ...",
+                MODAL_SUBTITLE: "אנא המתן מספר שניות לתוצאת ה-AI.",
+                RESULT_LIKELIHOOD: "סבירות להונאה:",
+                RESULT_XAI_TITLE: "פירוט בינה מלאכותית ניתנת להסבר (XAI)",
+                RESULT_DISCLAIMER: "⚠️ ויתור: ציון זה מנתח לחץ קולי ודפוסים לשוניים למטרות בידור וניסוי בלבד.",
+                CALIBRATION: [
+                    "אנא ציין את שמך המלא ואת התאריך הנוכחי.",
+                    "תאר את החולצה או החלק העליון שאתה לובש כרגע, כולל הצבע שלהם.",
+                    "רשום שלושה חפצים שאתה יכול לראות מיד לימינך.",
+                    "מה השעה הנוכחית המוצגת בשעון הקרוב אליך?",
+                    "ציין שלוש ערים מרכזיות באוסטרליה.",
+                    "כמה זה 1 ועוד 1?",
+                    "תאר את הנעליים שאתה נועל או את הזוג האחרון שלבשת.",
+                    "דקלם את המשפט האחרון של ההכרזה לכל באי עולם בדבר זכויות האדם."
+                ],
+                CHALLENGE: [
+                    "האם אי פעם לקחת בסתר קרדיט על רעיון של מישהו אחר?",
+                    "אם היית מוצא ארנק עם 1,000 דולר וללא זיהוי, האם היית מנסה להחזיר אותו?",
+                    "ספר לי על הפעם האחרונה שבה אמרת שקר משמעותי ומכוון.",
+                    "האם אי פעם הגזמת בכישוריך או בהישגיך בקורות חיים?",
+                    "האם אתה מאמין שאתה כנה לחלוטין עם בני משפחתך הקרובים ביותר?",
+                    "אם חבר היה מבקש ממך לחפות עליו בהתחייבות רצינית, האם היית משקר?",
+                    "האם יש משהו משמעותי שאתה מתחרט ששמרת בסוד מפני בן/בת הזוג או המשפחה שלך?",
+                    "האם אתה מאמין בקונספט של 'שקר לבן' כקביל?",
+                    "האם אי פעם רימית בכוונה במצב לימודים או עבודה?",
+                    "האם אי פעם נהגת מעל המהירות המותרת ונמנעת מקבלת קנס?",
+                    "אם היית רואה עמית גונב פריט קטן, האם היית מדווח עליו?",
+                    "האם אי פעם זייפת מחלה כדי להתחמק מהתחייבות?"
+                ]
+            },
+            'ru': {
+                TITLE: "ИИ-индикатор голосового обмана",
+                SUBTITLE: "Анализ голосового стресса и лингвистики",
+                LANG_LABEL: "Выберите язык ответа:",
+                PHASE_SETUP: "Настройка: Готовность к началу теста",
+                PHASE_CALIBRATION: (step, total) => `Этап калибровки: ${step} из ${total}`,
+                PHASE_CHALLENGE: (step, total) => `Вопрос-вызов: ${step} из ${total}`,
+                PHASE_ANALYZING_TEXT: "Анализ речи и признаков стресса...",
+                PHASE_COMPLETE: "Анализ завершен!",
+                Q_SETUP: "Выберите язык ответа выше и нажмите «Начать тест», чтобы начать калибровку.",
+                BTN_START_TEST: "Начать тест",
+                BTN_START_RECORDING: "Начать запись",
+                BTN_FINISH_ANSWERING: "Завершить ответ",
+                MODAL_TITLE: "Анализ речи и признаков стресса...",
+                MODAL_SUBTITLE: "Пожалуйста, подождите несколько секунд для получения результата ИИ.",
+                RESULT_LIKELIHOOD: "Вероятность обмана:",
+                RESULT_XAI_TITLE: "Подробный анализ объяснимого ИИ (XAI)",
+                RESULT_DISCLAIMER: "⚠️ Отказ от ответственности: Этот балл анализирует голосовой стресс и лингвистические паттерны только в развлекательных и экспериментальных целях.",
+                CALIBRATION: [
+                    "Пожалуйста, назовите свое полное имя и текущую дату.",
+                    "Опишите рубашку или верхнюю одежду, которую вы сейчас носите, включая ее цвет.",
+                    "Перечислите три предмета, которые вы видите сразу справа от себя.",
+                    "Какое текущее время отображается на ближайших часах?",
+                    "Назовите три крупных города Австралии.",
+                    "Сколько будет 1 плюс 1?",
+                    "Опишите обувь, которую вы носите, или последнюю пару, которую вы надевали.",
+                    "Прочитайте последнее предложение Всеобщей декларации прав человека."
+                ],
+                CHALLENGE: [
+                    "Вы когда-нибудь тайно присваивали себе чужую идею?",
+                    "Если бы вы нашли кошелек с 1000 долларов без документов, попытались бы вы его вернуть?",
+                    "Расскажите о том, когда вы в последний раз намеренно сказали значительную ложь.",
+                    "Вы когда-нибудь преувеличивали свои навыки или достижения в резюме?",
+                    "Считаете ли вы, что абсолютно честны со своими самыми близкими родственниками?",
+                    "Если бы друг попросил вас прикрыть его в серьезном обязательстве, солгали бы вы?",
+                    "Есть ли что-то важное, о чем вы сожалеете, что скрыли от своего партнера или семьи?",
+                    "Верите ли вы в концепцию 'ложь во благо' как приемлемую?",
+                    "Вы когда-нибудь намеренно жульничали в школе или на работе?",
+                    "Вы когда-нибудь превышали скорость и избегали штрафа?",
+                    "Если бы вы увидели, как коллега крадет мелкий предмет, сообщили бы вы о нем?",
+                    "Вы когда-нибудь притворялись больным, чтобы избежать выполнения обязательства?"
+                ]
+            }
+        };
+
+        // --- State and Question Flow ---
+        let state = {
+            view: 'home',
+            phase: 'setup', 
+            calibrationStep: 0,
+            challengeStep: 0,
+            calibrationDurations: [],
+            calibrationLatencies: [],
+            isRecording: false,
+            mediaRecorder: null,
+            audioChunks: [],
+            startTime: null,
+            currentCalibrationQuestions: [],
+            currentChallengeQuestions: [],
+            selectedLanguageCode: 'en',
+            challengeRecordings: [], 
+            lastChallengeAudio: null,
+            lastAcousticData: null,
+        };
+
+        let baselineAvgLatency = 0;
+        let baselineAvgDuration = 0;
+        
+        // --- Web Audio API for Visualizer ---
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let canvasContext = null;
+        let rafId = null; 
+
+        // --- DOM Elements (Specific to Deception Analyst) ---
+        const $appContainer = document.getElementById('view-deception');
+        const $appTitle = document.getElementById('app-title');
+        const $appSubtitle = document.getElementById('app-subtitle');
+        const $langLabel = document.getElementById('lang-label');
+        const $questionText = document.getElementById('question-text');
+        const $recordButton = document.getElementById('record-button');
+        const $statusBar = document.getElementById('status-bar');
+        const $micStatus = document.getElementById('mic-status');
+        const $loadingModal = document.getElementById('loading-modal');
+        const $modalTitle = document.getElementById('modal-title');
+        const $modalSubtitle = document.getElementById('modal-subtitle');
+        const $resultArea = document.getElementById('result-area');
+        const $confidenceScore = document.getElementById('confidence-score');
+        const $summaryText = document.getElementById('summary-text');
+        const $xaiList = document.getElementById('xai-list');
+        const $currentPhaseText = document.getElementById('current-phase-text');
+        const $visualizerCanvas = document.getElementById('voice-visualizer');
+        const $staticMicIcon = document.getElementById('static-mic-icon');
+        const $languageSelect = document.getElementById('language-select');
+        const $disclaimerText = document.getElementById('disclaimer-text');
+        const $likelihoodText = document.getElementById('likelihood-text');
+        const $xaiTitle = document.getElementById('xai-title');
+        const $restartButton = document.getElementById('restart-button');
+        const $acousticStats = document.getElementById('acoustic-stats');
+        const $linguisticStats = document.getElementById('linguistic-stats');
+        const $transcriptionText = document.getElementById('transcription-text');
+        
+        // --- Global Navigation Elements ---
+        const $views = {
+            'home': document.getElementById('view-home'),
+            'deception': document.getElementById('view-deception'),
+            'about': document.getElementById('view-about')
+        };
+        const $navLinks = {
+            'home': document.getElementById('nav-home'),
+            'deception': document.getElementById('nav-deception'),
+            'about': document.getElementById('nav-about')
+        };
+
+        // --- Utility Functions ---
+
+        function getL10n(key) {
+            return L10N[state.selectedLanguageCode] && L10N[state.selectedLanguageCode][key]
+                ? L10N[state.selectedLanguageCode][key]
+                : L10N.en[key]; // Fallback to English
+        }
+
+        function shuffleAndSlice(array, count) {
+            const arrCopy = [...array]; 
+            const shuffled = arrCopy.sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function populateLanguageSelector() {
+            $languageSelect.innerHTML = '';
+            LANGUAGES.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.code;
+                option.textContent = lang.name;
+                if (lang.code === 'en') {
+                    option.selected = true;
+                }
+                $languageSelect.appendChild(option);
+            });
+            $languageSelect.addEventListener('change', (e) => {
+                state.selectedLanguageCode = e.target.value;
+                // Re-initialize UI and questions when language changes
+                initializeDeceptionAnalyst();
+            });
+        }
+        
+        function getQuestion() {
+            const langData = L10N[state.selectedLanguageCode] || L10N.en;
+            if (state.phase === 'calibration') {
+                return state.currentCalibrationQuestions[state.calibrationStep];
+            } else if (state.phase === 'challenging') {
+                return state.currentChallengeQuestions[state.challengeStep];
+            }
+            return langData.Q_SETUP;
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status === 429 && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        console.warn(`Rate limit hit. Retrying in ${delay}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Fetch attempt ${i + 1} failed:`, error);
+                    if (i === maxRetries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    console.warn(`Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        // --- Visualizer Logic ---
+        function drawVoiceVisualizer() {
+            rafId = requestAnimationFrame(drawVoiceVisualizer);
+
+            if (!analyser || !canvasContext) return;
+
+            analyser.getByteFrequencyData(dataArray);
+
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            
+            const volume = Math.min(1, average / 128); 
+            
+            const w = $visualizerCanvas.width;
+            const h = $visualizerCanvas.height;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const maxRadius = 90;
+            const baseRadius = 30;
+            
+            const radius = baseRadius + volume * (maxRadius - baseRadius);
+
+            canvasContext.clearRect(0, 0, w, h);
+            
+            // 1. Draw pulsing, semi-transparent outer ring (based on voice)
+            canvasContext.beginPath();
+            canvasContext.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            canvasContext.fillStyle = `rgba(79, 70, 229, ${0.1 + volume * 0.4})`; // Primary color
+            canvasContext.fill();
+            
+            // 2. Draw the fixed center circle
+            canvasContext.beginPath();
+            canvasContext.arc(centerX, centerY, baseRadius, 0, 2 * Math.PI);
+            canvasContext.fillStyle = '#4f46e5'; 
+            canvasContext.fill();
+
+            // 3. Draw the inner microphone icon path
+            canvasContext.strokeStyle = 'white';
+            canvasContext.lineWidth = 2;
+            
+            // Draw mic body
+            canvasContext.beginPath();
+            canvasContext.moveTo(centerX - 10, centerY + 10);
+            canvasContext.lineTo(centerX + 10, centerY + 10);
+            canvasContext.arc(centerX, centerY + 10, 10, 0, Math.PI, true);
+            canvasContext.stroke();
+            
+            // Draw mic stand
+            canvasContext.beginPath();
+            canvasContext.moveTo(centerX, centerY - 20);
+            canvasContext.lineTo(centerX, centerY + 10);
+            canvasContext.stroke();
+
+            // Draw mic tip
+            canvasContext.beginPath();
+            canvasContext.arc(centerX, centerY - 20, 10, 0, 2 * Math.PI);
+            canvasContext.stroke();
+
+            // 4. Draw the red flashing recording dot
+            if (state.isRecording) {
+                if (Math.floor(Date.now() / 500) % 2 === 0) {
+                    canvasContext.beginPath();
+                    canvasContext.arc(centerX + 35, centerY - 35, 5, 0, 2 * Math.PI);
+                    canvasContext.fillStyle = '#ef4444'; // Red-500
+                    canvasContext.fill();
+                }
+            }
+        }
+        
+        // --- Deception Analyst UI Update Functions ---
+        function updateDeceptionUI() {
+            // Localization Updates
+            $appTitle.textContent = getL10n('TITLE');
+            $appSubtitle.textContent = getL10n('SUBTITLE');
+            $langLabel.textContent = getL10n('LANG_LABEL');
+            $modalTitle.textContent = getL10n('MODAL_TITLE');
+            $modalSubtitle.textContent = getL10n('MODAL_SUBTITLE');
+            $disclaimerText.textContent = getL10n('RESULT_DISCLAIMER');
+            $likelihoodText.textContent = getL10n('RESULT_LIKELIHOOD');
+            $xaiTitle.textContent = getL10n('RESULT_XAI_TITLE');
+
+
+            $resultArea.classList.add('hidden');
+            $micStatus.classList.add('hidden');
+            $loadingModal.classList.add('hidden');
+            $restartButton.classList.add('hidden');
+            
+            const isCalibrating = state.phase === 'calibration';
+            const isChallenging = state.phase === 'challenging';
+            const isRecording = state.isRecording;
+            const isAnalyzing = state.phase === 'analyzing';
+            const isSetup = state.phase === 'setup';
+
+            $recordButton.disabled = isAnalyzing || (isSetup && !state.currentCalibrationQuestions.length);
+            $languageSelect.disabled = isRecording || isAnalyzing || (isCalibrating || isChallenging); // Lock language after test starts
+            
+            // Handle RTL presentation for Arabic and Hebrew
+            const isRTL = state.selectedLanguageCode === 'ar' || state.selectedLanguageCode === 'he';
+            $appContainer.dir = isRTL ? 'rtl' : 'ltr';
+            $questionText.style.textAlign = isRTL ? 'right' : 'center';
+
+
+            // Visualizer State
+            if (isRecording) {
+                $visualizerCanvas.classList.remove('hidden');
+                $staticMicIcon.classList.add('hidden');
+            } else {
+                $visualizerCanvas.classList.add('hidden');
+                $staticMicIcon.classList.remove('hidden');
+            }
+
+            // Phase Text and Color
+            let phaseColor = 'bg-primary';
+            let phaseText = '';
+            
+            if (isSetup) {
+                phaseColor = 'bg-gray-500';
+                phaseText = getL10n('PHASE_SETUP');
+                $questionText.textContent = getQuestion();
+                $recordButton.textContent = getL10n('BTN_START_TEST');
+                $recordButton.disabled = false;
+            } else if (isCalibrating) {
+                phaseColor = 'bg-blue-600';
+                phaseText = getL10n('PHASE_CALIBRATION')(state.calibrationStep + 1, NUM_CALIBRATION_QUESTIONS);
+                $questionText.textContent = getQuestion();
+            } else if (isChallenging) {
+                phaseColor = 'bg-red-600';
+                phaseText = getL10n('PHASE_CHALLENGE')(state.challengeStep + 1, NUM_CHALLENGE_QUESTIONS);
+                $questionText.textContent = getQuestion();
+            } else if (isAnalyzing) {
+                $loadingModal.classList.remove('hidden');
+                $recordButton.classList.add('hidden');
+                phaseText = getL10n('PHASE_ANALYZING_TEXT');
+            } else if (state.phase === 'complete') {
+                phaseColor = 'bg-green-600';
+                $recordButton.classList.add('hidden');
+                $recordButton.disabled = true;
+                phaseText = getL10n('PHASE_COMPLETE');
+                $resultArea.classList.remove('hidden');
+                $restartButton.classList.remove('hidden'); // Ensure restart button is visible
+            }
+
+            // Recording Button Text
+            if (isRecording) {
+                $recordButton.textContent = getL10n('BTN_FINISH_ANSWERING');
+                $recordButton.classList.remove('bg-primary', 'hover:bg-secondary');
+                $recordButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else if (state.phase !== 'setup') {
+                $recordButton.textContent = getL10n('BTN_START_RECORDING');
+                $recordButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                $recordButton.classList.add('bg-primary', 'hover:bg-secondary');
+            }
+
+            // Apply Status Bar Styling
+            $statusBar.className = `text-center mb-6 p-3 rounded-xl font-semibold text-white transition-all duration-300 ${phaseColor}`;
+            $currentPhaseText.textContent = phaseText;
+        }
+
+        function renderStat(label, value, isDeviation = false) {
+            let colorClass = 'bg-gray-200 text-gray-800';
+            if (isDeviation) {
+                if (parseFloat(value) > 0.1) {
+                    colorClass = 'bg-red-100 text-red-700';
+                } else if (parseFloat(value) < -0.1) {
+                    colorClass = 'bg-green-100 text-green-700';
+                } else {
+                    colorClass = 'bg-blue-100 text-blue-700';
+                }
+            }
+            return `
+                <div class="stat-badge ${colorClass}">
+                    <span class="mr-1">${label}:</span>
+                    <span class="font-bold">${value}</span>
+                </div>
+            `;
+        }
+
+        function displayResults(data) {
+            state.phase = 'complete';
+            updateDeceptionUI();
+            
+            const score = data.deception_score_percent;
+            $confidenceScore.textContent = `${score}%`;
+            $summaryText.textContent = data.analysis_summary || "No summary provided by the AI.";
+            $transcriptionText.textContent = data.linguistic_statistics.transcription || "Transcription failed.";
+            $transcriptionText.dir = $appContainer.dir; // Set transcription direction based on language
+
+
+            // Dynamic color for the score text
+            let colorStart = '#10b981'; 
+            let colorEnd = '#f59e0b'; 
+            if (score > 65) {
+                colorStart = '#ef4444'; // Red
+                colorEnd = '#f97316'; // Orange
+            } else if (score > 35) {
+                colorStart = '#facc15'; // Yellow
+                colorEnd = '#fbbf24'; // Amber
+            }
+            $confidenceScore.style.setProperty('--score-color-start', colorStart);
+            $confidenceScore.style.setProperty('--score-color-end', colorEnd);
+
+            // --- Render Acoustic Stats ---
+            const acousticData = data.acoustic_summary;
+            $acousticStats.innerHTML = [
+                renderStat('Baseline Latency', `${acousticData.baseline_latency_s.toFixed(2)}s`),
+                renderStat('Final Latency', `${acousticData.final_latency_s.toFixed(2)}s`),
+                renderStat('Latency Dev', `${acousticData.latency_deviation_s.toFixed(2)}s`, true),
+                renderStat('Baseline Duration', `${acousticData.baseline_duration_s.toFixed(2)}s`),
+                renderStat('Final Duration', `${acousticData.final_duration_s.toFixed(2)}s`),
+                renderStat('Duration Dev', `${acousticData.duration_deviation_s.toFixed(2)}s`, true),
+            ].join('');
+
+            // --- Render Linguistic Stats ---
+            const linguisticData = data.linguistic_statistics;
+            $linguisticStats.innerHTML = [
+                renderStat('Self-Ref Rate', linguisticData.self_reference_rate),
+                renderStat('Hedging Score', linguisticData.hedging_score),
+                renderStat('Negative Words', linguisticData.negative_emotion_words),
+                renderStat('Word Count', data.linguistic_statistics.transcription.split(/\s+/).length),
+            ].join('');
+
+
+            // --- Render XAI Breakdown ---
+            $xaiList.innerHTML = '';
+            (data.xai_breakdown || []).forEach(item => {
+                let impactColorClass;
+                let impactBgClass;
+                switch (item.impact.toLowerCase()) {
+                    case 'high': impactColorClass = 'text-red-700'; impactBgClass = 'bg-red-100'; break;
+                    case 'medium': impactColorClass = 'text-orange-600'; impactBgClass = 'bg-orange-100'; break;
+                    case 'low': impactColorClass = 'text-green-700'; impactBgClass = 'bg-green-100'; break;
+                    default: impactColorClass = 'text-gray-600'; impactBgClass = 'bg-gray-100';
+                }
+
+                const li = document.createElement('li');
+                li.className = 'p-3 bg-gray-50 rounded-lg border border-gray-200 transition duration-300 hover:shadow-md';
+                li.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-sm font-semibold text-gray-800">${item.metric}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-bold ${impactColorClass} ${impactBgClass}">${item.impact.toUpperCase()} IMPACT</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">${item.explanation}</p>
+                `;
+                $xaiList.appendChild(li);
+            });
+            
+            $restartButton.classList.remove('hidden'); 
+        }
+
+        // --- Core Application and Navigation Logic ---
+        
+        // This function handles the SPA view changes
+        function renderView(viewName) {
+            state.view = viewName;
+            
+            // Hide all views and remove active class from all links
+            Object.keys($views).forEach(key => {
+                $views[key].classList.add('hidden');
+                $navLinks[key].classList.remove('active');
+            });
+
+            // Show the selected view and set active class
+            $views[viewName].classList.remove('hidden');
+            $navLinks[viewName].classList.add('active');
+
+            // Special handling for the Deception Analyst view
+            if (viewName === 'deception') {
+                // Initialize/reset the test session when navigating to the deception tool
+                initializeDeceptionAnalyst();
+            }
+        }
+
+
+        // Refactored initialization function for the Deception Analyst Tool
+        function initializeDeceptionAnalyst() {
+            // Reset state to initial setup
+            state.phase = 'setup'; 
+            state.calibrationStep = 0;
+            state.challengeStep = 0;
+            state.calibrationDurations = [];
+            state.calibrationLatencies = [];
+            state.isRecording = false;
+            state.mediaRecorder = null;
+            state.audioChunks = [];
+            state.startTime = null;
+            state.challengeRecordings = []; 
+            state.lastChallengeAudio = null;
+            state.lastAcousticData = null;
+            baselineAvgLatency = 0;
+            baselineAvgDuration = 0;
+            
+            // Re-run question randomization
+            const langData = L10N[state.selectedLanguageCode] || L10N.en;
+            let fullCalibration = shuffleAndSlice(langData.CALIBRATION, L10N.en.CALIBRATION.length);
+            let fullChallenge = shuffleAndSlice(langData.CHALLENGE, L10N.en.CHALLENGE.length);
+
+            // Slice down to the required number of questions after randomization
+            state.currentCalibrationQuestions = fullCalibration.slice(0, NUM_CALIBRATION_QUESTIONS);
+            state.currentChallengeQuestions = fullChallenge.slice(0, NUM_CHALLENGE_QUESTIONS);
+
+            // Show button again and hide result area
+            $recordButton.classList.remove('hidden'); 
+            $resultArea.classList.add('hidden');
+            $restartButton.classList.add('hidden');
+            $micStatus.classList.add('hidden');
+            $loadingModal.classList.add('hidden');
+            
+            updateDeceptionUI();
+        }
+        // Refactored initialization function for the Deception Analyst Tool
+        function nextQuestion() {
+            // Reset state to initial setup
+            state.phase = 'challenging'; 
+            // state.calibrationStep = 0;
+            state.challengeStep = 0;
+            // state.calibrationDurations = [];
+            // state.calibrationLatencies = [];
+            state.isRecording = false;
+            state.mediaRecorder = null;
+            state.audioChunks = [];
+            state.startTime = null;
+            state.challengeRecordings = []; 
+            state.lastChallengeAudio = null;
+            state.lastAcousticData = null;
+            // baselineAvgLatency = 0;
+            // baselineAvgDuration = 0;
+            
+            // Re-run question randomization
+            const langData = L10N[state.selectedLanguageCode] || L10N.en;
+            let fullCalibration = shuffleAndSlice(langData.CALIBRATION, L10N.en.CALIBRATION.length);
+            let fullChallenge = shuffleAndSlice(langData.CHALLENGE, L10N.en.CHALLENGE.length);
+
+            // Slice down to the required number of questions after randomization
+            state.currentCalibrationQuestions = fullCalibration.slice(0, NUM_CALIBRATION_QUESTIONS);
+            state.currentChallengeQuestions = fullChallenge.slice(0, NUM_CHALLENGE_QUESTIONS);
+
+            // Show button again and hide result area
+            $recordButton.classList.remove('hidden'); 
+            $resultArea.classList.add('hidden');
+            $restartButton.classList.add('hidden');
+            $micStatus.classList.add('hidden');
+            $loadingModal.classList.add('hidden');
+            
+            updateDeceptionUI();
+        }
+
+        // Renamed and streamlined restart function
+        function restartSession() {
+            // This just calls the initialization function, resetting the tool
+            initializeDeceptionAnalyst();
+        }
+
+
+        // --- Core Audio/Analysis Logic (Unchanged from previous version) ---
+// NOTE: This function must be marked 'async' to use await
+async function startRecording() {
+    // 1. Handle Setup Phase
+    if (state.phase === 'setup') {
+        // Change phase, but let the code fall through to request mic permission below.
+        state.phase = 'calibration';
+        updateDeceptionUI();
+    }
+
+    // 2. Handle Stop Recording
+    if (state.isRecording) {
+        stopRecording();
+        return;
+    }
+
+    $micStatus.classList.add('hidden');
+    $recordButton.disabled = true;
+
+    try {
+        let stream;
+
+        // --- THE KEY FIX: Request Mic Only If Stream is Not Yet Stored ---
+        if (state.micStream) {
+            // Stream already granted and stored: use it directly (NO PROMPT)
+            stream = state.micStream;
+        } else {
+            // Stream not stored: Request permission (PROMPT)
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.micStream = stream; // STORE THE STREAM for future use
+        }
+
+        // 3. Audio Context & Visualizer Setup
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            canvasContext = $visualizerCanvas.getContext('2d');
+        }
+
+        // Create new Audio Context nodes for the session
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+
+        rafId = requestAnimationFrame(drawVoiceVisualizer);
+
+        // 4. MediaRecorder Setup
+        state.mediaRecorder = new MediaRecorder(stream);
+        state.audioChunks = [];
+
+        state.mediaRecorder.ondataavailable = event => {
+            state.audioChunks.push(event.data);
+        };
+
+        state.mediaRecorder.onstop = () => {
+            cancelAnimationFrame(rafId);
+            source.disconnect();
+            
+            // --- CRUCIAL CHANGE: REMOVE THIS LINE ---
+            // stream.getTracks().forEach(track => track.stop()); 
+            // This is what revoked the permission. By keeping the tracks open, 
+            // the permission remains active for the duration of the web page session.
+
+            const blob = new Blob(state.audioChunks, { 'type' : 'audio/wav' });
+            const endTime = Date.now();
+            
+            const totalDuration = (endTime - state.startRecordingTime) / 1000;
+            const responseLatency = Math.max(0, totalDuration * 0.2); 
+            const speakingDuration = Math.max(0.1, totalDuration - responseLatency); 
+
+            handleRecordingEnd(blob, responseLatency, speakingDuration);
+        };
+
+        // 5. Start Recording
+        state.mediaRecorder.start();
+        state.startRecordingTime = Date.now();
+        state.isRecording = true;
+        $recordButton.disabled = false;
+        updateDeceptionUI();
+
+    } catch (err) {
+        console.error('Microphone access error:', err);
+        $micStatus.classList.remove('hidden');
+        $micStatus.textContent = `Error: ${err.name}. Please ensure microphone access is allowed.`;
+        $recordButton.disabled = false;
+        updateDeceptionUI();
+    }
+}
+        // function startRecording() {
+        //     if (state.phase === 'setup') {
+        //         state.phase = 'calibration';
+        //         updateDeceptionUI();
+        //         return;
+        //     }
+
+        //     if (state.isRecording) {
+        //         stopRecording();
+        //         return;
+        //     }
+
+        //     $micStatus.classList.add('hidden');
+        //     $recordButton.disabled = true;
+
+        //     navigator.mediaDevices.getUserMedia({ audio: true })
+        //         .then(stream => {
+        //             if (!audioContext) {
+        //                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        //                 canvasContext = $visualizerCanvas.getContext('2d');
+        //             }
+        //             const source = audioContext.createMediaStreamSource(stream);
+        //             analyser = audioContext.createAnalyser();
+        //             analyser.fftSize = 256;
+        //             dataArray = new Uint8Array(analyser.frequencyBinCount);
+        //             source.connect(analyser);
+                    
+        //             rafId = requestAnimationFrame(drawVoiceVisualizer);
+
+        //             state.mediaRecorder = new MediaRecorder(stream);
+        //             state.audioChunks = [];
+
+        //             state.mediaRecorder.ondataavailable = event => {
+        //                 state.audioChunks.push(event.data);
+        //             };
+
+        //             state.mediaRecorder.onstop = () => {
+        //                 cancelAnimationFrame(rafId);
+        //                 source.disconnect();
+        //                 stream.getTracks().forEach(track => track.stop());
+
+        //                 const blob = new Blob(state.audioChunks, { 'type' : 'audio/wav' });
+        //                 const endTime = Date.now();
+                        
+        //                 const totalDuration = (endTime - state.startRecordingTime) / 1000;
+        //                 const responseLatency = Math.max(0, totalDuration * 0.2); 
+        //                 const speakingDuration = Math.max(0.1, totalDuration - responseLatency); 
+
+        //                 handleRecordingEnd(blob, responseLatency, speakingDuration);
+        //             };
+
+        //             state.mediaRecorder.start();
+        //             state.startRecordingTime = Date.now();
+        //             state.isRecording = true;
+        //             $recordButton.disabled = false;
+        //             updateDeceptionUI();
+        //         })
+        //         .catch(err => {
+        //             console.error('Microphone access error:', err);
+        //             $micStatus.classList.remove('hidden');
+        //             $micStatus.textContent = `Error: ${err.name}. Please ensure microphone access is allowed.`;
+        //             $recordButton.disabled = false;
+        //             updateDeceptionUI();
+        //         });
+        // }
+
+        function stopRecording() {
+            if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+                state.mediaRecorder.stop();
+                state.isRecording = false;
+                $recordButton.disabled = true;
+                updateDeceptionUI();
+            }
+        }
+
+        async function handleRecordingEnd(audioBlob, latency, duration) {
+            $recordButton.disabled = true; 
+            
+            try {
+                const base64Audio = await blobToBase64(audioBlob);
+
+                if (state.phase === 'calibration') {
+                    state.calibrationLatencies.push(latency);
+                    state.calibrationDurations.push(duration);
+                    
+                    state.calibrationStep++;
+                    if (state.calibrationStep < NUM_CALIBRATION_QUESTIONS) {
+                        $recordButton.disabled = false;
+                    } else {
+                        const sumLatency = state.calibrationLatencies.reduce((a, b) => a + b, 0);
+                        const sumDuration = state.calibrationDurations.reduce((a, b) => a + b, 0);
+                        baselineAvgLatency = sumLatency / state.calibrationLatencies.length;
+                        baselineAvgDuration = sumDuration / state.calibrationDurations.length;
+                        
+                        state.phase = 'challenging';
+                        state.challengeStep = 0; 
+                        $recordButton.disabled = false;
+                    }
+
+                } else if (state.phase === 'challenging') {
+                    
+                    const latencyDeviation = latency - baselineAvgLatency;
+                    const durationDeviation = duration - baselineAvgDuration;
+
+                    state.challengeRecordings.push({
+                        latencyDeviation: latencyDeviation,
+                        durationDeviation: durationDeviation,
+                        question: getQuestion(),
+                        finalLatency: latency,
+                        finalDuration: duration
+                    });
+                    
+                    state.lastChallengeAudio = base64Audio; 
+
+                    state.challengeStep++;
+                    if (state.challengeStep < NUM_CHALLENGE_QUESTIONS) {
+                        state.phase = 'challenging';
+                        $recordButton.disabled = false;
+                    } else {
+                        state.phase = 'analyzing';
+                        updateDeceptionUI(); 
+                        const prompt = createGeminiPrompt(); 
+                        await analyzeDeception(state.lastChallengeAudio, prompt); 
+                    }
+                }
+
+                updateDeceptionUI();
+
+            } catch (error) {
+                console.error("Error during recording analysis:", error);
+                $micStatus.classList.remove('hidden');
+                $micStatus.textContent = "Error processing audio. Please try again.";
+                $recordButton.disabled = false;
+                state.phase = state.challengeStep > 0 ? 'challenging' : 'calibration'; 
+                updateDeceptionUI();
+            }
+        }
+
+        function createGeminiPrompt() {
+            const lastRecording = state.challengeRecordings[state.challengeRecordings.length - 1];
+
+            const latencyDev = lastRecording.latencyDeviation;
+            const durationDev = lastRecording.durationDeviation;
+            const finalLatency = lastRecording.finalLatency;
+            const finalDuration = lastRecording.finalDuration;
+            const lastQuestion = lastRecording.question;
+            const baselineCount = NUM_CALIBRATION_QUESTIONS;
+            
+            const deviationSummary = state.challengeRecordings.map((rec, index) => 
+                `Q${index+1} ("${rec.question}"): Latency Dev=${rec.latencyDeviation.toFixed(2)}s, Duration Dev=${rec.durationDeviation.toFixed(2)}s`
+            ).join('; ');
+
+            const systemPrompt = `You are a sophisticated Deception Analysis AI. The user's spoken response language is **${state.selectedLanguageCode}**. Your task is to analyze a user's spoken response (provided as audio) and generate a structured JSON output based on linguistic and simulated acoustic indicators.
+1. Transcribe the provided audio into the **${state.selectedLanguageCode}** language and include it in the 'linguistic_statistics' object.
+2. Analyze the transcribed text for linguistic deception indicators common in **${state.selectedLanguageCode}** (e.g., hedging, vagueness, fewer self-references, over-elaborated detail).
+3. Integrate the full context of **all** challenge questions' acoustic patterns to inform your analysis. The deviations below are relative to the user's established baseline of ${baselineCount} truthful responses:
+   - Full Session Acoustic Deviation Pattern: ${deviationSummary}
+   - The final audio's specific acoustic metrics: Response Latency: ${finalLatency.toFixed(2)}s (Dev: ${latencyDev.toFixed(2)}s), Speaking Duration: ${finalDuration.toFixed(2)}s (Dev: ${durationDev.toFixed(2)}s).
+
+4. Generate a 'deception_score_percent' (0-100) and an 'analysis_summary' based on all findings, written in **English**.
+5. Populate all fields in 'acoustic_summary' and 'linguistic_statistics' using realistic, fictional data points informed by your overall analysis. The 'xai_breakdown' should focus on 3-4 key factors, all written in **English**.
+
+**Acoustic Stress Indicators:** A high positive Response Latency Deviation suggests hesitation/planning (High Impact). A high positive Duration Deviation suggests over-elaboration or complexity (Medium Impact).
+
+Output the result strictly as a JSON object, adhering to the provided schema.`;
+
+            const userPrompt = `Analyze the audio for the final challenge question: "${lastQuestion}".`;
+            
+            state.lastAcousticData = {
+                baseline_latency_s: baselineAvgLatency,
+                final_latency_s: finalLatency,
+                latency_deviation_s: latencyDev,
+                baseline_duration_s: baselineAvgDuration,
+                final_duration_s: finalDuration,
+                duration_deviation_s: durationDev
+            };
+
+            return { systemPrompt, userPrompt };
+        }
+
+        async function analyzeDeception(base64Audio, { systemPrompt, userPrompt }) {
+            
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: userPrompt },
+                        {
+                            inlineData: {
+                                mimeType: "audio/wav",
+                                data: base64Audio
+                            }
+                        }
+                    ]
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "deception_score_percent": { "type": "INTEGER", "description": "The final probability score (0-100) indicating deception likelihood." },
+                            "analysis_summary": { "type": "STRING", "description": "A concise, detailed summary of the key findings (4-5 sentences), in English." },
+                            "acoustic_summary": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "baseline_latency_s": { "type": "NUMBER" },
+                                    "final_latency_s": { "type": "NUMBER" },
+                                    "latency_deviation_s": { "type": "NUMBER" },
+                                    "baseline_duration_s": { "type": "NUMBER" },
+                                    "final_duration_s": { "type": "NUMBER" },
+                                    "duration_deviation_s": { "type": "NUMBER" }
+                                }
+                            },
+                            "linguistic_statistics": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "self_reference_rate": { "type": "STRING", "description": "A percentage string indicating usage of 'I', 'me', etc. (e.g., '1.2%')." },
+                                    "hedging_score": { "type": "STRING", "description": "A value indicating certainty (e.g., 'High' or '3/10')." },
+                                    "negative_emotion_words": { "type": "INTEGER" },
+                                    "transcription": { "type": "STRING", "description": "The full transcribed text of the final response." }
+                                }
+                            }
+                            ,
+                            "xai_breakdown": {
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "metric": { "type": "STRING", "description": "Name of the factor (e.g., 'Response Latency', 'Linguistic Ambiguity')." },
+                                        "impact": { "type": "STRING", "description": "Impact level ('High', 'Medium', or 'Low')." },
+                                        "explanation": { "type": "STRING", "description": "One sentence explaining why this metric contributed to the score, in English." }
+                                    },
+                                    "propertyOrdering": ["metric", "impact", "explanation"]
+                                }
+                            }
+                        },
+                        "propertyOrdering": ["deception_score_percent", "analysis_summary", "acoustic_summary", "linguistic_statistics", "xai_breakdown"]
+                    }
+                }
+            };
+
+            try {
+                const response = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.candidates && response.candidates.length > 0) {
+                    const jsonString = response.candidates[0].content.parts[0].text;
+                    const resultData = JSON.parse(jsonString);
+                    
+                    if (state.lastAcousticData) {
+                        resultData.acoustic_summary = state.lastAcousticData;
+                    }
+
+                    displayResults(resultData);
+                } else {
+                    throw new Error("API returned an unexpected structure or blocked content.");
+                }
+
+            } catch (error) {
+                console.error("AI Analysis Failed:", error);
+                $loadingModal.classList.add('hidden');
+                $micStatus.classList.remove('hidden');
+                $micStatus.textContent = `AI analysis failed: ${error.message}. Please check console for details.`;
+                state.phase = 'challenging'; 
+                updateDeceptionUI();
+            }
+        }
+
+        // --- Event Listeners and Initial Load ---
+        
+        function globalInit() {
+            // Setup general listeners
+            $recordButton.addEventListener('click', startRecording);
+            // $restartButton.addEventListener('click', restartSession);
+            $restartButton.addEventListener('click', nextQuestion);
+            
+            // Setup language selector and trigger initial UI update
+            populateLanguageSelector();
+            
+            // Start the application on the 'home' view
+            renderView('home'); 
+        }
+
+        window.onload = globalInit;
+
+    </script>
+</body>
+</html>
